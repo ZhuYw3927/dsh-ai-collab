@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "project": "{{PROJECT_NAME}}",
+  "root": "{{PROJECT_ROOT}}",
+  "phase": "init",
+  "focus": "初始化 v2 协作层",
+  "blockers": [],
+  "next": [],
+  "owner": "human",
+  "updated_at": "{{NOW}}",
+  "last_log_ts": null,
+  "last_log_id": null,
+  "last_commit": null,
+  "last_build": null,
+  "links": {
+    "agents": "AGENTS.md",
+    "log": ".ai/log.jsonl",
+    "changelog": ".ai/changelog/",
+    "format": ".ai/LOG_FORMAT.md"
+  }
+}

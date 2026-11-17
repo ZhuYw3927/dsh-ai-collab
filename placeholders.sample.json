@@ -1,0 +1,25 @@
+{
+  "PROJECT_NAME": "demo-project",
+  "PROJECT_CODE": "DEMO-0001",
+  "PROJECT_ROOT": "D:\\Projects\\Demo",
+  "PROJECT_SUMMARY": "一句话说明这个项目做什么（产品形态 + 关键器件 + 输出方式）",
+  "MCU": "AT32F403ACGT7",
+  "TOOLCHAIN": "Keil MDK / ARMCLANG V6.22",
+  "VCS": "SVN（只提交工程源码）",
+  "TOOL_LIST": "`deepseek-harness` / `claude-code` / `cursor` / `codex` / `copilot` / `human`",
+  "PERM_TABLE": [
+    "| `APP_工程目录\\` | 可改 | 工作副本 |",
+    "| `IAP_工程目录\\` | 可改 | 工作副本（无 IAP 则删掉此行） |",
+    "| `XXX_Reference\\` | **只读** | 初始版本参考，禁止修改 |",
+    "| `.ai\\` | 可改 | 日志 / 状态 / 变更记录，**不入库** |",
+    "| `D:\\Projects\\Demo` | 根 | AGENTS.md 与 .ai 所在层 |"
+  ],
+  "BUILD_CMD": "& \"<toolchain>\\UV4.exe\" -b \"mdk-arm\\app.uvprojx\" -j0 -o build_app.log",
+  "OUTPUT_DIR": "`mdk-arm\\Objects\\*.hex`、`mdk-arm\\Out_Files\\*.bin`",
+  "FLASH_NOTE": "IAP → `0x00000000`；APP → `0x00009800`",
+  "CONSTRAINT_1": "低功耗模式与 2000 Hz 输出互斥（带宽/功耗门限）",
+  "CONSTRAINT_2": "采样在定时器中断内完成，主循环用标志而非计数器",
+  "CONSTRAINT_3": "协议/硬件行为不确定时先抓报文再改代码（COM4, 921600）",
+  "ENCODING_RULE": "UTF-8 with BOM + CRLF（新建文件）；存量 GBK 文件禁止整体重写",
+  "VERSION_FILE": "`comm\\adapter\\inc\\product_cfg.h` 的 `FIRMWARE_VERSION_INFO`"
+}

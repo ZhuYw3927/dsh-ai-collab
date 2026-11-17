@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "AI 协作层",
+    "description": "给所有 AI 工具共用一份项目记忆：只追加的 .ai/ 工作日志、当前状态快照，以及自动化永不覆盖的分区 AGENTS.md。",
+    "detail": "docs/DETAIL.md"
+  }
+}

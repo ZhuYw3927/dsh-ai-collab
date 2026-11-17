@@ -1,0 +1,69 @@
+{
+  "name": "dsh-ai-collab",
+  "version": "0.4.3",
+  "os": [
+    "win32"
+  ],
+  "description": "DeepSeek Harness bundle: AI collaboration layer (status/log/check tools + workspace scaffold) built around AGENTS.md and .ai/",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "author": "dsh-ai-collab contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZhuYw3927/dsh-ai-collab.git"
+  },
+  "homepage": "https://github.com/ZhuYw3927/dsh-ai-collab#readme",
+  "bugs": {
+    "url": "https://github.com/ZhuYw3927/dsh-ai-collab/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "agents-md",
+    "ai-collaboration",
+    "logging"
+  ],
+  "files": [
+    "index.js",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "PUBLISH.md",
+    "AGENTS.template.md",
+    "AGENTS.global.template.md",
+    "placeholders.sample.json",
+    "install.ps1",
+    "ai-ensure.ps1",
+    "ai-init.ps1",
+    "template/",
+    "locale",
+    "icon.svg",
+    "docs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.1"
+  },
+  "scripts": {
+    "check": "node --check index.js && node --check lib/config.js && node --check lib/tasks.js",
+    "test": "node --test test/smoke.test.mjs test/lib.test.mjs test/preservation.test.mjs"
+  }
+}

@@ -1,0 +1,9 @@
+# Bundle patch：把 ai-collab 插件插入 profile 的插件树。
+# 行字段：id（唯一）、name（包名或路径）、config（交给插件 Config 校验）。
+# 安装后本条会追加到 profile 的插件列表末尾；禁用时把 enabled 改为 false 即可。
+- insert:
+    - id: ai-collab
+      name: dsh-ai-collab
+      config:
+        autoInit: true
+        maxTail: 10

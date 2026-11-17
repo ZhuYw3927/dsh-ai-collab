@@ -1,0 +1,11 @@
+# Dependencies and build output
+node_modules/
+
+# Release artifacts (npm pack / market index are generated on release)
+market/
+*.tgz
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local/dsh/ai-collab/log.schema.json",
+  "title": ".ai/log.jsonl — AI 协作流水记录 v2",
+  "description": "一行一个对象；只追加。必填 id/ts/tool/summary/status。未知字段允许存在（向前兼容），但不要滥用。",
+  "type": "object",
+  "required": ["id", "ts", "tool", "summary", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "唯一标识（UTC 时间戳 + 随机后缀），用于去重与互相引用"
+    },
+    "ts": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "description": "ISO-8601 带时区，如 2026-11-04T15:29:29+08:00。允许 record 内 ts 相同，但整体不得倒退"
+    },
+    "tool": {
+      "type": "string",
+      "minLength": 2,
+      "examples": ["deepseek-harness", "claude-code", "cursor", "codex", "copilot", "gemini-cli", "human", "svn", "keil-uv4"],
+      "description": "生产者标识。推荐使用上面这些固定值；新工具请用短横线小写名"
+    },
+    "actor": {
+      "type": "string",
+      "enum": ["ai", "human", "system"],
+      "default": "ai",
+      "description": "谁做的；工具自动执行记 ai，人工操作记 human"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "task_start", "task_done", "fix", "diagnosis", "build", "commit",
+        "doc", "review", "rollback", "correction", "maintenance", "handoff"
+      ],
+      "description": "这次做了什么类型的事"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "partial", "blocked", "todo", "failed"],
+      "description": "结果：ok 完成 / partial 部分 / blocked 被阻塞 / todo 未开始 / failed 失败"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 200,
+      "description": "一句话结论：做了什么 + 结果。中文，单行，建议 ≤120 字"
+    },
+    "files_modified": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "相对项目根的改动文件；无改动写 []"
+    },
+    "files_read": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "关键输入（便于回溯当时的判断依据）"
+    },
+    "issue": {
+      "type": "string",
+      "description": "遇到的问题 / 根因 / 阻塞点；status 为 blocked/failed 时必填"
+    },
+    "next": {
+      "type": "string",
+      "description": "下一步或待确认事项"
+    },
+    "verification": {
+      "type": "string",
+      "description": "怎么验的 + 结果，如 rebuild 0/0, Code=78106"
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "number" },
+        "ro": { "type": "number" },
+        "rw": { "type": "number" },
+        "zi": { "type": "number" },
+        "warnings": { "type": "number" },
+        "result": { "type": "string" }
+      },
+      "description": "编译尺寸与结果（Keil/GCC 通用）"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "what": { "type": "string" },
+          "result": { "type": "string" }
+        }
+      },
+      "description": "实测条目：[{what,result}]"
+    },
+    "commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "关键命令（构建、烧录、抓包、svn），便于复现"
+    },
+    "firmware_version": { "type": "string" },
+    "vcs_rev": {
+      "type": ["number", "string"],
+      "description": "关联的版本库修订号（SVN r1289 / Git commit 短哈希）"
+    },
+    "refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "文档/补丁/外部锚点"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "自由标签：imu / coord / encoding / vcs / process …"
+    },
+    "corrects": {
+      "type": "string",
+      "description": "被更正记录的 id；只追加，不改旧行"
+    },
+    "agent": {
+      "type": "string",
+      "description": "会话/子代理标识，用于区分同一天多次工作"
+    },
+    "migrated_from": {
+      "type": "string",
+      "enum": ["v1-a", "v1-b"],
+      "description": "从旧版迁移而来时标注来源版本"
+    }
+  }
+}
