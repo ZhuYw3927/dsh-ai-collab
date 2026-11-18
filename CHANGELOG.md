@@ -2,6 +2,8 @@
 
 ## 0.4.3
 
+- Published to npm as `dsh-ai-collab@0.4.3` (2026-11-17).
+
 - Repository metadata: `repository`, `homepage`, `bugs` point at the public GitHub repository;
   `README` carries the CI badge; `.gitignore` added for release artifacts.
 - Market checklist updated now that the repository exists.

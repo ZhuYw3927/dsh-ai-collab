@@ -9,7 +9,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) bundle that adds a **projec
 
 The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, Codex) reads and writes the same progress, instead of rediscovering the project every session.
 
-> Status: **0.4.2, experimental**. Installed and running in a live profile (Windows, DSH `0.2.2-rc.3`); not yet published to npm or a plugin market — see [Known limitations](#known-limitations).
+> Status: **0.4.3, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab); not yet listed in the community plugin market — see [Known limitations](#known-limitations).
 
 ## Requirements
 
