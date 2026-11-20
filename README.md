@@ -11,7 +11,7 @@ The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, C
 
 > **Visual introduction (中文):** <https://ZhuYw3927.github.io/dsh-ai-collab/>
 
-> Status: **0.4.3, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab); not yet listed in the community plugin market — see [Known limitations](#known-limitations).
+> Status: **0.4.4, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab) and listed in the community plugin market — see [Known limitations](#known-limitations).
 
 ## Requirements
 
@@ -196,4 +196,10 @@ npm pack --dry-run
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). MIT permits commercial use.
+
+- [Disclaimer](docs/DISCLAIMER.md) — the software is provided "AS IS", without warranty;
+  back up your workspace before use and review generated changes.
+- [Non-commercial request](docs/NONCOMMERCIAL-NOTICE.md) — the author asks you to prefer
+  non-commercial use. This is a request, **not** a license condition: MIT still grants
+  commercial rights, and the notice adds no restriction.

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.4
+
+- Docs/legal: add `docs/DISCLAIMER.md` (AS IS, limitation of liability, backup guidance)
+  and `docs/NONCOMMERCIAL-NOTICE.md` (advisory non-commercial request). `LICENSE` stays MIT;
+  both notices state that MIT permits commercial use and the request is not a license condition.
+- README: License section links both documents; status line now notes the bundle is listed in
+  the community plugin market (it was already listed; the text was stale).
+- Republish so the npm README shows the **Visual introduction** link
+  (<https://zhuyw3927.github.io/dsh-ai-collab/>), which was added after 0.4.3.
+- `docs/index.html` refreshed to 0.4.4 and links the disclaimer / non-commercial notice.
+- No runtime behaviour changes.
+
 ## 0.4.3
 
 - Published to npm as `dsh-ai-collab@0.4.3` (2026-11-17).

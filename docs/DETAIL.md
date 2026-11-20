@@ -86,4 +86,12 @@ A record is one JSON object per line:
 
 ## License
 
-MIT.
+MIT. MIT permits commercial use.
+
+- [Disclaimer](DISCLAIMER.md) — the software is provided "AS IS", without warranty; back up
+  your workspace and review generated changes before committing.
+- [Non-commercial request](NONCOMMERCIAL-NOTICE.md) — the author asks you to prefer
+  non-commercial use. This is a request, not a license condition; MIT still grants
+  commercial rights and the notice adds no restriction.
+
+Using the bundle means you have read and accepted the disclaimer.

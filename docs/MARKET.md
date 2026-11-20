@@ -1,6 +1,6 @@
 # Market release checklist
 
-Published as `dsh-ai-collab@0.4.3`. The remaining steps take it to the
+Published as `dsh-ai-collab@0.4.4`. The remaining steps take it to the
 community plugin market (`dshmarket` / awesome-dsh-plugin) and, optionally, a self-hosted
 format-1 index.
 
