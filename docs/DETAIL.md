@@ -1,6 +1,6 @@
 # dsh-ai-collab
 
-A DeepSeek Harness bundle that gives every AI tool in a repository the same project memory:
+A DeepSeek Harness bundle that gives every AI tool in a repository the same project memory (visual introduction: <https://ZhuYw3927.github.io/dsh-ai-collab/>):
 one `AGENTS.md` entry file and one hidden `.ai/` folder holding an append-only work log,
 a current-state snapshot, and version-level change notes.
 
