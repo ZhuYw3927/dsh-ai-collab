@@ -54,7 +54,39 @@ function ConvertFrom-JsonEscapes([string]$Text) {
 function Write-Utf8([string]$Path, [string]$Text) {
     $dir = Split-Path -Parent $Path
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    [System.IO.File]::WriteAllText($Path, ($Text -replace "`r`n", "`n"), $Utf8NoBom)
+    $normalized = $Text -replace "`r`n", "`n"
+    $tmp = Join-Path $dir ('.' + [System.IO.Path]::GetFileName($Path) + '.tmp-' + [guid]::NewGuid().ToString('N'))
+    [System.IO.File]::WriteAllText($tmp, $normalized, $Utf8NoBom)
+    for ($i = 0; $i -lt 8; $i++) {
+        try {
+            if (Test-Path -LiteralPath $Path) {
+                [System.IO.File]::Replace($tmp, $Path, [NullString]::Value)
+            } else {
+                [System.IO.File]::Move($tmp, $Path)
+            }
+            return
+        } catch {
+            if ($i -eq 7) {
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+                throw
+            }
+            Start-Sleep -Milliseconds (30 * ($i + 1))
+        }
+    }
+}
+
+# AGENTS.md 变更前留一份可回滚快照（最多 10 份，位于 .ai\backups\）
+function Backup-Agents([string]$Path) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path)) { return }
+        $backupDir = Join-Path (Join-Path (Split-Path -Parent $Path) '.ai') 'backups'
+        New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+        $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss-fff')
+        Copy-Item -LiteralPath $Path -Destination (Join-Path $backupDir ("AGENTS.{0}.md" -f $stamp)) -Force
+        Get-ChildItem -LiteralPath $backupDir -Filter 'AGENTS.*.md' -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -Skip 10 |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    } catch { }
 }
 
 # 整理成 2 空格缩进、无多余空格的 JSON
@@ -187,7 +219,68 @@ else {
     Step '保留: .ai\status.json（已存在）'
 }
 
+# 读取纪律注册表，生成 AGENTS.md §8 的清单表与内联规则块。
+# 全局模块：$DSH_HOME\disciplines\（只列表，正文已在全局 AGENTS.md）；
+# 项目规则：<root>\.ai\disciplines\rules\（启用才内联，停用只列表）。
+function Get-DisciplineSection([string]$Root) {
+    $dshHome = $env:DSH_HOME
+    if ([string]::IsNullOrWhiteSpace($dshHome)) { $dshHome = Join-Path $HOME '.dsh' }
+    $table = New-Object System.Collections.ArrayList
+    [void]$table.Add('| 编号 | 范围 | 纪律 | 状态 | 来源 |')
+    [void]$table.Add('|---|---|---|---|---|')
+    $rules = New-Object System.Collections.ArrayList
+    $count = 0
+
+    $globalReg = Join-Path $dshHome 'disciplines\disciplines.json'
+    if (Test-Path -LiteralPath $globalReg) {
+        try { $g = (Read-Utf8 $globalReg) | ConvertFrom-Json } catch { $g = $null }
+        foreach ($m in @($g.modules)) {
+            if (-not $m -or [string]::IsNullOrWhiteSpace([string]$m.id)) { continue }
+            $id = [string]$m.id
+            $disp = 'G' + ($id -replace '^g', '')
+            $title = ([string]$m.title) -replace '\|', '\|'
+            $state = if ($m.enabled -ne $false) { '启用' } else { '停用' }
+            $src = if ($m.file) { '$DSH_HOME\disciplines\' + (([string]$m.file) -replace '/', '\') } else { '$DSH_HOME\AGENTS.md' }
+            [void]$table.Add(('| {0} | 全局 | {1} | {2} | `{3}` |' -f $disp, $title, $state, $src))
+            $count++
+        }
+    }
+
+    $projReg = Join-Path $Root '.ai\disciplines\disciplines.json'
+    $projRules = Join-Path $Root '.ai\disciplines\rules'
+    if (Test-Path -LiteralPath $projReg) {
+        try { $p = (Read-Utf8 $projReg) | ConvertFrom-Json } catch { $p = $null }
+        foreach ($r in @($p.rules)) {
+            if (-not $r -or [string]::IsNullOrWhiteSpace([string]$r.id)) { continue }
+            $id = [string]$r.id
+            $disp = 'P-' + ($id -replace '^p-', '')
+            $title = ([string]$r.title) -replace '\|', '\|'
+            $enabled = ($r.enabled -ne $false)
+            $state = if ($enabled) { '启用' } else { '停用' }
+            $file = if ($r.file) { [string]$r.file } else { "$id.md" }
+            $src = '.ai\disciplines\rules\' + ($file -replace '/', '\')
+            [void]$table.Add(('| {0} | 项目 | {1} | {2} | `{3}` |' -f $disp, $title, $state, $src))
+            if ($enabled) {
+                $bodyPath = Join-Path $projRules $file
+                if (Test-Path -LiteralPath $bodyPath) {
+                    $body = (Read-Utf8 $bodyPath).Trim()
+                    $body = [regex]::Replace($body, '(?s)^#{1,3}\s+.*?\r?\n\r?\n', '')
+                    [void]$rules.Add(("<!-- dsh-ai-collab:discipline:{0}:start -->`n### {1} · {2}`n`n{3}`n<!-- dsh-ai-collab:discipline:{0}:end -->" -f $id, $disp, $title, $body))
+                }
+            }
+            $count++
+        }
+    }
+
+    if ($count -eq 0) { [void]$table.Add('| — | — | （暂无纪律清单） | — | — |') }
+    if ($rules.Count -eq 0) { [void]$rules.Add('（暂无启用的项目纪律）') }
+    return @{ Table = ($table -join "`n"); Rules = ($rules -join "`n`n") }
+}
+
 # ---------- 2. AGENTS.md ----------
+$discipline = Get-DisciplineSection $ProjectRoot
+$map['DISCIPLINE_TABLE'] = $discipline.Table
+$map['DISCIPLINE_RULES'] = $discipline.Rules
 $agentsPath = Join-Path $ProjectRoot 'AGENTS.md'
 $tplAgents = Read-Utf8 (Join-Path $here 'AGENTS.template.md')
 foreach ($k in $map.Keys) { $tplAgents = $tplAgents.Replace('{{' + $k + '}}', $map[$k]) }
@@ -227,8 +320,9 @@ if (-not $agentsExists) {
     Step '写入: AGENTS.md'
 }
 elseif ($ResetAgents) {
+    Backup-Agents $agentsPath
     Write-Utf8 $agentsPath $tplAgents
-    Step '写入: AGENTS.md（-ResetAgents：丢弃旧内容，仅按模板重建）'
+    Step '写入: AGENTS.md（-ResetAgents：丢弃旧内容，仅按模板重建；旧文件已备份到 .ai\backups\）'
 }
 elseif ($agentsGenerated) {
     # 只替换 generated 区，user 区与其它内容原样保留
@@ -237,8 +331,14 @@ elseif ($agentsGenerated) {
     $merged = $currentAgents.Substring(0, $oldSpan.Start) +
         $tplAgents.Substring($newSpan.Start, $newSpan.End - $newSpan.Start) +
         $currentAgents.Substring($oldSpan.End)
-    Write-Utf8 $agentsPath $merged
-    Step '更新: AGENTS.md（仅替换自动区，项目自维护区原样保留）'
+    if ($merged -ne $currentAgents) {
+        Backup-Agents $agentsPath
+        Write-Utf8 $agentsPath $merged
+        Step '更新: AGENTS.md（仅替换自动区，项目自维护区原样保留）'
+    }
+    else {
+        Step '保留: AGENTS.md（内容未变化）'
+    }
 }
 elseif ($ForceAgents) {
     # 旧格式/手工文件：保留全部旧内容，放进 user 区，绝不删除
@@ -248,8 +348,9 @@ elseif ($ForceAgents) {
     $composed = $generated + "`n`n" + $uStart + "`n" +
         "<!-- 以下为原 AGENTS.md 内容，由 -ForceAgents 原样迁入，未做删改 -->`n`n" +
         $preserved + "`n" + $uEnd + "`n"
+    Backup-Agents $agentsPath
     Write-Utf8 $agentsPath $composed
-    Step '写入: AGENTS.md（-ForceAgents：自动区重建，旧内容整体迁入项目自维护区）'
+    Step '写入: AGENTS.md（-ForceAgents：自动区重建，旧内容整体迁入项目自维护区；旧文件已备份）'
 }
 else {
     $response = Join-Path (Join-Path $ProjectRoot '.ai') 'AGENTS.generated.md'

@@ -82,6 +82,40 @@ $ErrorActionPreference = 'Stop'
 
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
+# 并发保护：写临时文件再替换，避免读者看到半截 JSON/Markdown。
+function Write-TextAtomic([string]$Path, [string]$Text) {
+    $dir = Split-Path -Parent $Path
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $tmp = Join-Path $dir ('.' + [System.IO.Path]::GetFileName($Path) + '.' + [guid]::NewGuid().ToString('N') + '.tmp')
+    [System.IO.File]::WriteAllText($tmp, $Text, $Utf8NoBom)
+    if (-not (Test-Path -LiteralPath $Path)) { Move-Item -LiteralPath $tmp -Destination $Path -Force; return }
+    for ($i = 0; $i -lt 8; $i++) {
+        try { [System.IO.File]::Replace($tmp, $Path, [NullString]::Value); return }
+        catch [System.IO.IOException] { Start-Sleep -Milliseconds (30 * ($i + 1)) }
+    }
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
+# 跨进程互斥：CreateNew 是原子的；超时抛错，由调用方决定是否继续。
+function Enter-ProjectLock([string]$Path, [int]$TimeoutMs = 15000) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        try {
+            $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try {
+                $bytes = [Text.Encoding]::UTF8.GetBytes(("pid={0} ts={1}" -f $PID, (Get-Date).ToString('o')))
+                $fs.Write($bytes, 0, $bytes.Length); $fs.Flush()
+            } finally { $fs.Dispose() }
+            return
+        }
+        catch [System.IO.IOException] {
+            if ($sw.ElapsedMilliseconds -gt $TimeoutMs) { throw "获取锁超时: $Path" }
+            Start-Sleep -Milliseconds 50
+        }
+    }
+}
+function Exit-ProjectLock([string]$Path) { Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue }
+
 $ActionEnum = @('task_start', 'task_done', 'fix', 'diagnosis', 'build', 'commit',
     'doc', 'review', 'rollback', 'correction', 'maintenance', 'handoff')
 $StatusEnum = @('ok', 'partial', 'blocked', 'todo', 'failed')
@@ -289,7 +323,7 @@ function Save-StatusObject([string]$ProjectRoot, $Object) {
     $pretty = ConvertTo-Json -InputObject $Object -Depth 8
     $pretty = ConvertFrom-JsonEscapes $pretty
     $pretty = Format-JsonPretty $pretty
-    [System.IO.File]::WriteAllText($path, ($pretty -replace "`r`n", "`n") + "`n", $Utf8NoBom)
+    Write-TextAtomic $path (($pretty -replace "`r`n", "`n") + "`n")
     return $path
 }
 
@@ -487,9 +521,13 @@ function Invoke-Add {
     $logPath = Get-LogPath $ProjectRoot
     $dir = Split-Path -Parent $logPath
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    [System.IO.File]::AppendAllText($logPath, $line + "`n", $Utf8NoBom)
-
-    Update-StatusFromLog $ProjectRoot $ordered
+    $lockPath = Join-Path $dir '.log.lock'
+    [void](Enter-ProjectLock $lockPath)
+    try {
+        [System.IO.File]::AppendAllText($logPath, $line + "`n", $Utf8NoBom)
+        Update-StatusFromLog $ProjectRoot $ordered
+    }
+    finally { Exit-ProjectLock $lockPath }
 
     # 自动刷新跨项目看板（约定：项目父目录存在 .ai\board.md）。-NoBoard 可关闭。
     if (-not $NoBoard) {
@@ -675,7 +713,7 @@ Record work through `.ai\llm.cmd` (status / tail / add / check). Never rewrite t
         $content = $template.Replace('{{TITLE}}', $t.Title).Replace('{{TOOL}}', $t.Tool).Replace('{{ROOT}}', $ProjectRoot)
         $dest = Join-Path $entriesDir $t.Name
         if ((Test-Path -LiteralPath $dest) -and -not $Force) { continue }
-        [System.IO.File]::WriteAllText($dest, ($content -replace "`r`n", "`n") + "`n", $Utf8NoBom)
+        Write-TextAtomic $dest (($content -replace "`r`n", "`n") + "`n")
     }
     Write-Info ("母版已更新: .ai\entries\（{0} 个）" -f $targets.Count)
 
@@ -726,7 +764,10 @@ function Invoke-Tasks([string]$ProjectRoot) {
     if ($rows.Count -eq 0) { [void]$sb.AppendLine('| （暂无记录） | | | | |') }
 
     $out = Join-Path $ProjectRoot 'TASKS.md'
-    [System.IO.File]::WriteAllText($out, $sb.ToString().Replace("`r`n", "`n"), $Utf8NoBom)
+    $lock = Join-Path $ProjectRoot '.ai\.tasks.lock'
+    [void](Enter-ProjectLock $lock)
+    try { Write-TextAtomic $out ($sb.ToString().Replace("`r`n", "`n")) }
+    finally { Exit-ProjectLock $lock }
     if (-not $Quiet) { Write-Info ("已生成任务清单: {0}（{1} 条）" -f $out, $rows.Count) }
 }
 function Invoke-Archive([string]$ProjectRoot) {
@@ -769,12 +810,21 @@ function Invoke-Archive([string]$ProjectRoot) {
     $archiveFile = Join-Path $archiveDir ("log-{0}-{1}.jsonl" -f (Get-Date).Year, $quarter)
     $backupFile = Join-Path $archiveDir ("log-{0}-backup-{1}.jsonl" -f (Get-Date).ToString('yyyyMMdd-HHmmss'), $quarter)
 
-    Copy-Item -LiteralPath $logPath -Destination $backupFile -Force
-    foreach ($line in $archived) { [System.IO.File]::AppendAllText($archiveFile, $line + "`n", $Utf8NoBom) }
+    $lockPath = Join-Path (Join-Path $ProjectRoot '.ai') '.log.lock'
+    [void](Enter-ProjectLock $lockPath)
+    try {
+        # 归档基于之前读取的行；若期间有并发追加，宁可中止也不能丢记录。
+        $currentCount = @([System.IO.File]::ReadAllLines($logPath, [Text.Encoding]::UTF8) | Where-Object { $_.Trim() }).Count
+        if ($currentCount -ne $lines.Count) { throw '归档期间日志有新增记录，已中止；请重试' }
 
-    $keepText = ''
-    if ($keep.Count -gt 0) { $keepText = ($keep -join "`n") + "`n" }
-    [System.IO.File]::WriteAllText($logPath, $keepText, $Utf8NoBom)
+        Copy-Item -LiteralPath $logPath -Destination $backupFile -Force
+        foreach ($line in $archived) { [System.IO.File]::AppendAllText($archiveFile, $line + "`n", $Utf8NoBom) }
+
+        $keepText = ''
+        if ($keep.Count -gt 0) { $keepText = ($keep -join "`n") + "`n" }
+        Write-TextAtomic $logPath $keepText
+    }
+    finally { Exit-ProjectLock $lockPath }
 
     Write-Info ("已归档 {0} 条 → {1}" -f $archived.Count, $archiveFile)
     Write-Info ("整文件备份 → {0}" -f $backupFile)
@@ -869,7 +919,7 @@ function Invoke-Board([string]$ProjectRoot) {
 
     $outDir = Split-Path -Parent $Out
     if (-not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
-    [System.IO.File]::WriteAllText($Out, $sb.ToString().Replace("`r`n", "`n"), $Utf8NoBom)
+    Write-TextAtomic $Out ($sb.ToString().Replace("`r`n", "`n"))
     Write-Info ("已生成看板: {0}（{1} 个项目，{2} 个未接入）" -f $Out, $rows.Count, $unadopted.Count)
 }
 

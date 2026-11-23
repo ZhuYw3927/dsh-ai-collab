@@ -9,13 +9,21 @@
  *   2) 'tools' 是否就是 ctx.tools 的注入名（当前按官方示例 inject = ['tools']）。
  * 插件异常会影响 Host 启动，所以首次安装请用 --patch 隔离验证，见 README。
  */
-import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, readdirSync, renameSync, statSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, renameSync, statSync, rmSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { homedir } from 'node:os'
 import { spawn } from 'node:child_process'
 import { normalizeConfig } from './lib/config.js'
 import { writeTasks } from './lib/tasks.js'
+import { writeFileAtomic, readText, backupFile } from './lib/atomic.js'
+import { withLock } from './lib/lock.js'
+import {
+  addGlobalModule, auditProject, listProject, loadGlobal, loadProject, migrateGlobal,
+  normaliseRegistry, projectDir, projectRegistryPath, projectRulesDir, removeGlobalModule,
+  renderGlobalFile, renderProjectSection, setGlobalEnabled, ID_RE,
+} from './lib/disciplines.js'
+import { buildHandoff, inheritPrompt, writeSessionBoot } from './lib/handoff.js'
 
 export const name = 'ai-collab'
 // Only `tools` is required. `workingDirectory` is used when present
@@ -183,22 +191,28 @@ function appendRecord(root, input) {
   const errors = recordErrors(rec, 0)
   if (errors.length > 0) throw new Error(`记录校验失败，未写入: ${errors.join('; ')}`)
 
-  mkdirSync(aiDir(root), { recursive: true })
-  appendFileSync(logPath(root), JSON.stringify(rec) + '\n', 'utf8')
+  // One writer at a time per project: append + status read-modify-write must be
+  // a unit, otherwise two sessions overwrite each other's status fields.
+  const lockPath = join(aiDir(root), '.log.lock')
+  return withLock(lockPath, () => {
+    mkdirSync(aiDir(root), { recursive: true })
+    appendFileSync(logPath(root), JSON.stringify(rec) + '\n', 'utf8')
 
-  const st = readJson(statusPath(root))
-  if (st) {
-    st.last_log_ts = rec.ts
-    st.last_log_id = rec.id
-    st.updated_at = nowIso()
-    if (rec.next) st.next = [rec.next]
-    if (rec.status === 'blocked' || rec.status === 'failed') {
-      const list = Array.isArray(st.blockers) ? st.blockers : []
-      st.blockers = [...new Set([rec.issue, ...list].filter(Boolean))]
+    const st = readJson(statusPath(root))
+    if (st) {
+      st.rev = Number.isInteger(st.rev) ? st.rev + 1 : 1
+      st.last_log_ts = rec.ts
+      st.last_log_id = rec.id
+      st.updated_at = nowIso()
+      if (rec.next) st.next = [rec.next]
+      if (rec.status === 'blocked' || rec.status === 'failed') {
+        const list = Array.isArray(st.blockers) ? st.blockers : []
+        st.blockers = [...new Set([rec.issue, ...list].filter(Boolean))]
+      }
+      writeFileAtomic(statusPath(root), JSON.stringify(st, null, 2) + '\n')
     }
-    try { writeFileSync(statusPath(root), JSON.stringify(st, null, 2) + '\n', 'utf8') } catch { /* 状态刷新失败不影响日志 */ }
-  }
-  return rec
+    return rec
+  })
 }
 
 function spawnEnsure(root, config, extraArgs = []) {
@@ -268,11 +282,24 @@ function maybeRefreshBoard(root) {
 function refreshTasks(root) {
   try {
     if (!existsSync(join(root, '.ai', 'tasks-enabled'))) return
-    const { written, count } = writeTasks(root, nowIso())
+    const { written, count } = withLock(join(root, '.ai', '.tasks.lock'), () => writeTasks(root, nowIso()))
     if (!written) return
     if (count === 0) appendLog('ai-collab-tasks.log', `root=${root} count=0`)
   } catch (error) {
     appendLog('ai-collab-tasks.log', `root=${root} throw ${error?.message || error}`)
+  }
+}
+
+/**
+ * Rebuild `.ai\SESSION_BOOT.md` after every record. It is derived data
+ * (status + last N records), so a stale boot file is worse than a small write.
+ */
+function refreshSessionBoot(root) {
+  try {
+    if (!existsSync(join(root, '.ai'))) return
+    writeSessionBoot(root, { maxTail: 10 })
+  } catch (error) {
+    appendLog('ai-collab-handoff.log', `root=${root} throw ${error?.message || error}`)
   }
 }
 
@@ -311,6 +338,11 @@ export function apply(ctx, config = {}) {
         const result = spawnEnsure(root, opts)
         if (result.done) {
           const finished = await result.done
+          if (finished.ok) {
+            try { writeSessionBoot(root, { maxTail: opts.maxTail }) } catch (error) {
+              appendLog('ai-collab-handoff.log', `autoInit root=${root} throw ${error?.message || error}`)
+            }
+          }
           ctx.logger?.info?.('ai-collab autoInit', { root, ok: finished.ok, parsed: parseEnsureOutput(finished.out) })
         }
       } catch (error) {
@@ -387,6 +419,19 @@ function registerTools(ctx, opts, defineTool, spec) {
   // DSH 契约：output.render 必须返回内容块数组；schema 用值 schema DSL 的 json 节点
   const output = { schema: { type: 'json' }, render: (args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }] }
 
+  /** Re-render AGENTS.md §8 (and the boot file) after a discipline change. */
+  const resyncProject = async (root) => {
+    if (!SCAFFOLD_SUPPORTED) return { started: false, reason: `unsupported-platform: ${process.platform}` }
+    const handle = spawnEnsure(root, opts, ['-Force'])
+    if (!handle.started) return { started: false, reason: handle.reason }
+    const finished = await handle.done
+    let boot = null
+    try { boot = writeSessionBoot(root, { maxTail: opts.maxTail }) } catch (error) {
+      boot = { ok: false, error: String(error?.message || error) }
+    }
+    return { started: true, exit: finished.code ?? null, ok: finished.ok === true, result: parseEnsureOutput(finished.out), boot }
+  }
+
   registered.push('ai_status')
   ctx.tools.register(defineTool({
     name: 'ai_status',
@@ -426,6 +471,7 @@ function registerTools(ctx, opts, defineTool, spec) {
       const r = await rootOf(exec)
       const rec = appendRecord(r, args)
       refreshTasks(r)
+      refreshSessionBoot(r)
       maybeRefreshBoard(r)
       return rec
     }
@@ -455,6 +501,11 @@ function registerTools(ctx, opts, defineTool, spec) {
         }
       })
       if (!readJson(statusPath(r))) errors.push('status.json 缺失或不可解析')
+      try {
+        for (const drift of auditProject(r, readText(join(r, 'AGENTS.md')))) errors.push(`§8 漂移: ${drift}`)
+      } catch (error) {
+        errors.push(`§8 审计失败: ${error?.message || error}`)
+      }
       return { root: r, records: readLines(logPath(r)).length, errors }
     }
   }))
@@ -512,6 +563,140 @@ function registerTools(ctx, opts, defineTool, spec) {
       }
       if (finished.err) payload.stderr = finished.err.slice(0, 500)
       if (finished.error) payload.error = finished.error
+      if (finished.ok) {
+        try { payload.boot = writeSessionBoot(target, { maxTail: opts.maxTail }) } catch (error) {
+          payload.boot = { ok: false, error: String(error?.message || error) }
+        }
+      }
+      return payload
+    }
+  }))
+
+  registered.push('ai_discipline')
+  ctx.tools.register(defineTool({
+    name: 'ai_discipline',
+    description: '纪律清单：列出/新增/启用/停用/删除项目纪律（渲染进 AGENTS.md §8），或管理全局纪律模块（重写 $DSH_HOME\\AGENTS.md，自动备份）。',
+    parameters: {
+      action: {
+        type: 'string', required: true,
+        enum: [
+          'list', 'add', 'enable', 'disable', 'remove',
+          'global-list', 'global-migrate', 'global-add', 'global-enable', 'global-disable', 'global-remove',
+        ],
+        description: '项目动作直接改 .ai\\disciplines\\ 并重渲染 §8；global-* 动作改 $DSH_HOME\\disciplines\\ 并重写全局 AGENTS.md。',
+      },
+      id: { type: 'string', description: '纪律 id（2–41 位小写字母/数字/连字符）' },
+      title: { type: 'string', description: 'add / global-add 的标题' },
+      body: { type: 'string', description: 'add / global-add 的规则正文（Markdown）' },
+      priority: { type: 'number', description: '排序权重，越小越靠前' },
+      force: { type: 'boolean', description: 'global-migrate 时重建已存在的模块（先备份）' },
+      root: { type: 'string', description: '目标工作区，缺省为会话 cwd' },
+    },
+    output,
+    async execute(args, exec) {
+      const action = String(args?.action || '')
+      const r = args?.root ? String(args.root) : await rootOf(exec)
+      const id = String(args?.id || '').trim()
+
+      if (action === 'list') {
+        let counts = null
+        try { counts = renderProjectSection(r).counts } catch { /* 注册表不可读时只返回原始列表 */ }
+        return { root: r, ...listProject(r), counts }
+      }
+
+      // ---------- project rules ----------
+      if (['add', 'enable', 'disable', 'remove'].includes(action)) {
+        const registry = normaliseRegistry(readJson(projectRegistryPath(r)) ?? {}, 'project')
+        const rules = registry.rules
+        let target = null
+        if (action === 'add') {
+          if (!ID_RE.test(id)) throw new Error('id 必须为 2–41 位小写字母/数字/连字符')
+          if (!String(args?.title ?? '').trim()) throw new Error('add 需要 title')
+          if (!String(args?.body ?? '').trim()) throw new Error('add 需要 body')
+          if (rules.some((x) => x.id === id)) throw new Error(`项目纪律已存在: ${id}`)
+          mkdirSync(projectRulesDir(r), { recursive: true })
+          writeFileAtomic(join(projectRulesDir(r), `${id}.md`), `${String(args.body).trim()}\n`)
+          target = {
+            id, title: String(args.title).trim(), enabled: true,
+            priority: Number.isFinite(Number(args?.priority)) ? Number(args.priority) : rules.length * 10,
+            file: `${id}.md`, description: '',
+          }
+          rules.push(target)
+        } else {
+          target = rules.find((x) => x.id === id)
+          if (!target) throw new Error(`项目纪律不存在: ${id}`)
+          if (action === 'remove') {
+            const src = join(projectRulesDir(r), target.file)
+            if (existsSync(src)) {
+              const destDir = join(projectDir(r), '_archive')
+              mkdirSync(destDir, { recursive: true })
+              renameSync(src, join(destDir, `${id}.${Date.now()}.md`))
+            }
+            registry.rules = rules.filter((x) => x.id !== id)
+          } else {
+            target.enabled = action === 'enable'
+          }
+        }
+        writeFileAtomic(projectRegistryPath(r), `${JSON.stringify(registry, null, 2)}\n`)
+        const sync = await resyncProject(r)
+        return { ok: true, action, id, rule: target, sync }
+      }
+
+      // ---------- global modules ----------
+      if (action === 'global-list') {
+        const state = loadGlobal()
+        return {
+          root: r,
+          home: state.dir,
+          agents: state.agentsPath,
+          generated: state.generated,
+          modules: (state.modules.length ? state.modules : state.fallback).map((m) => ({ id: m.id, title: m.title, enabled: m.enabled, file: m.file, priority: m.priority, hash: m.hash })),
+        }
+      }
+      if (action === 'global-migrate') {
+        return { ok: true, ...migrateGlobal({ force: args?.force === true }) }
+      }
+      if (action === 'global-add') {
+        const module = addGlobalModule({ id, title: args?.title, body: args?.body, priority: args?.priority })
+        return { ok: true, module, render: renderGlobalFile() }
+      }
+      if (action === 'global-enable' || action === 'global-disable') {
+        const module = setGlobalEnabled(id, action === 'global-enable')
+        return { ok: true, module: { id: module.id, title: module.title, enabled: module.enabled }, render: renderGlobalFile() }
+      }
+      if (action === 'global-remove') {
+        const removed = removeGlobalModule({ id })
+        return { ok: true, removed: { id: removed.id, title: removed.title }, render: renderGlobalFile() }
+      }
+      throw new Error(`未知 action: ${action}`)
+    }
+  }))
+
+  registered.push('ai_handoff')
+  ctx.tools.register(defineTool({
+    name: 'ai_handoff',
+    description: '跨会话交接：生成/读取 .ai/SESSION_BOOT.md（接棒提示词，含必读顺序、当前状态、最近记录、纪律清单与继承摘要要求）。',
+    parameters: {
+      action: { type: 'string', enum: ['read', 'write', 'inherit'], description: 'read 只返回内容；write 重新生成；inherit 生成并返回给新会话的提示语' },
+      maxTail: { type: 'number', description: '摘录最近多少条记录（默认 10，最大 50）' },
+      root: { type: 'string', description: '目标工作区，缺省为会话 cwd' },
+    },
+    output,
+    async execute(args, exec) {
+      const r = args?.root ? String(args.root) : await rootOf(exec)
+      const action = String(args?.action || 'read')
+      const maxTail = Number.isFinite(Number(args?.maxTail)) ? Number(args.maxTail) : opts.maxTail
+      let boot = null
+      if (action !== 'read') boot = writeSessionBoot(r, { maxTail })
+      const packet = buildHandoff(r, { maxTail })
+      const payload = { action, root: r, boot, packet }
+      if (action === 'read' || action === 'inherit') {
+        const bootPath = join(r, '.ai', 'SESSION_BOOT.md')
+        // read 必须返回可用的接棒提示词：文件缺失时先生成一次
+        if (!existsSync(bootPath)) boot = writeSessionBoot(r, { maxTail })
+        payload.content = readText(bootPath)
+      }
+      if (action === 'inherit') payload.prompt = inheritPrompt(r)
       return payload
     }
   }))

@@ -91,6 +91,16 @@
   1. **用户级一次性转发**（推荐，项目内零冗余）：`~\.claude\CLAUDE.md` 写"若存在 ./AGENTS.md 则遵循"；Gemini 在 `~\.gemini\settings.json` 设 `"contextFileName": "AGENTS.md"`。
   2. **临时落地**：`& .ai\llm.cmd entries -Publish` 生成 4 个转发文件，用完 `& .ai\llm.cmd entries -Remove` 收回。
 - 转发母版常驻 `.ai\entries\`；改规则只改本文件，`entries -Publish -Force` 会同步。
+## 8. 纪律清单（自动生成，勿手改）
+
+> 全局纪律由 `$DSH_HOME\AGENTS.md` 注入（对所有会话生效）；项目纪律的“启用”表示正文已内联在本节，
+> 真正进入当前项目的提示词；“停用”只保留清单行，不生效。
+> 管理入口：DSH 工具 `ai_discipline`（list / add / enable / disable / remove / global-*）；
+> 改动后由 `ai-ensure` 重渲染本节。
+
+{{DISCIPLINE_TABLE}}
+
+{{DISCIPLINE_RULES}}
 <!-- dsh-ai-collab:generated:end -->
 
 <!-- dsh-ai-collab:user:start -->
