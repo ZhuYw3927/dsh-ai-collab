@@ -360,6 +360,11 @@ export function apply(ctx, config = {}) {
             try { writeSessionBoot(root, { maxTail: opts.maxTail }) } catch (error) {
               appendLog('ai-collab-handoff.log', `autoInit root=${root} throw ${error?.message || error}`)
             }
+            // 会话一建立就补齐可视化产物（TASKS.html / dashboard.html），避免重启后文件不存在
+            refreshTasks(root)
+            try { writeDashboard(root) } catch (error) {
+              appendLog('ai-collab-dashboard.log', `autoInit root=${root} throw ${error?.message || error}`)
+            }
           }
           ctx.logger?.info?.('ai-collab autoInit', { root, ok: finished.ok, parsed: parseEnsureOutput(finished.out) })
         }
@@ -535,7 +540,8 @@ function registerTools(ctx, opts, defineTool, spec) {
     parameters: {},
     output,
     async execute(args, exec) {
-      const parent = dirname(await rootOf(exec))
+      const root = await rootOf(exec)
+      const parent = dirname(root)
       const rows = []
       for (const entry of readdirSafe(parent)) {
         if (entry.startsWith('.') || entry.startsWith('_')) continue
@@ -551,7 +557,12 @@ function registerTools(ctx, opts, defineTool, spec) {
           updated_at: st.updated_at || ''
         })
       }
-      return { scanned: parent, projects: rows.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))) }
+      const projects = rows.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+      // 仪表盘与本工具同频刷新（board.md 由 ai-ensure 维护，这里只写 dashboard.html）
+      try { writeDashboard(root) } catch (e) {
+        appendLog('ai-collab-dashboard.log', `ai_board root=${root} throw ${e?.message || e}`)
+      }
+      return { scanned: parent, projects }
     }
   }))
 
@@ -584,6 +595,11 @@ function registerTools(ctx, opts, defineTool, spec) {
       if (finished.ok) {
         try { payload.boot = writeSessionBoot(target, { maxTail: opts.maxTail }) } catch (error) {
           payload.boot = { ok: false, error: String(error?.message || error) }
+        }
+        // 接入/同步完成后补齐可视化产物（TASKS.html / dashboard.html）
+        refreshTasks(target)
+        try { payload.dashboard = writeDashboard(target) } catch (error) {
+          appendLog('ai-collab-dashboard.log', `ai_init root=${target} throw ${error?.message || error}`)
         }
       }
       return payload

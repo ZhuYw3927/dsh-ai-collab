@@ -543,7 +543,7 @@
 
 <div class="stats-band">
   <div class="stats" role="list">
-    <div role="listitem"><div class="stat-value">5<small>个</small></div><div class="stat-label">原生工具</div></div>
+    <div role="listitem"><div class="stat-value">8<small>个</small></div><div class="stat-label">原生工具</div></div>
     <div role="listitem"><div class="stat-value">3<small>条</small></div><div class="stat-label">命令开始交接</div></div>
     <div role="listitem"><div class="stat-value">0<small>次</small></div><div class="stat-label">网络请求</div></div>
     <div role="listitem"><div class="stat-value">100<small>%</small></div><div class="stat-label">数据本地留存</div></div>
@@ -646,7 +646,7 @@
               <p class="pillar-role">协作层</p>
             </div>
           </div>
-          <p>追加式日志、当前状态快照、版本级变更、schema 与归档。所有写入经由 <code>.ai\llm.cmd</code> 或 5 个原生工具，编码与格式由脚本保证。</p>
+          <p>追加式日志、当前状态快照、版本级变更、schema 与归档。所有写入经由 <code>.ai\llm.cmd</code> 或 8 个原生工具，编码与格式由脚本保证。</p>
           <ul class="ticks">
             <li>log.jsonl 只追加，不改写</li>
             <li>status.json 覆盖式，10 秒接手</li>
@@ -677,7 +677,7 @@
             <tr><th>工具</th><th>接入方式</th><th>参与方式</th></tr>
           </thead>
           <tbody>
-            <tr><td>DSH</td><td>Bundle 安装，5 个原生工具</td><td><code>ai_status</code> / <code>ai_log</code> / <code>ai_check</code> 直接读写</td></tr>
+            <tr><td>DSH</td><td>Bundle 安装，8 个原生工具</td><td><code>ai_status</code> / <code>ai_log</code> / <code>ai_check</code> 直接读写</td></tr>
             <tr><td>Claude Code</td><td>用户级 <code>CLAUDE.md</code> 转发，或 <code>entries -Publish</code></td><td>读 <code>AGENTS.md</code>，用 <code>llm.cmd</code> 记录</td></tr>
             <tr><td>Cursor / Copilot</td><td>原生读取 <code>AGENTS.md</code></td><td>继承项目事实与纪律</td></tr>
             <tr><td>Codex / 其他 CLI</td><td>任意 shell 调用 <code>.ai\llm.cmd</code></td><td><code>status</code> / <code>tail</code> / <code>add</code> / <code>check</code></td></tr>
@@ -1002,7 +1002,7 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
         autoInit: true</code></pre>
         </div>
       </div>
-      <p class="note">安装后重启 DSH；profile 内所有会话都会出现 7 个工具。首次进入某个项目时，先调用 <code>ai_init</code>（或把 <code>autoInit</code> 设为 <code>true</code>）生成 <code>.ai/</code> 与 <code>AGENTS.md</code>，之后按下面的动作循环。若包只进了依赖、未进 <code>dsh.profile.bundles</code>，需要手动补一行。</p>
+      <p class="note">安装后重启 DSH；profile 内所有会话都会出现 8 个工具。首次进入某个项目时，先调用 <code>ai_init</code>（或把 <code>autoInit</code> 设为 <code>true</code>）生成 <code>.ai/</code> 与 <code>AGENTS.md</code>，之后按下面的动作循环。若包只进了依赖、未进 <code>dsh.profile.bundles</code>，需要手动补一行。</p>
 
       <div class="code-wrap">
         <pre class="code powershell"><code><span class="c"># 开工：同步并读状态（约 10 秒）</span>
@@ -1016,7 +1016,7 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
 &amp; .ai\llm.cmd check</code></pre>
       </div>
 
-      <div class="tools-chips" aria-label="七个原生工具">
+      <div class="tools-chips" aria-label="八个原生工具">
         <div class="toolchip"><b>ai_status</b><span>读状态与最近记录</span></div>
         <div class="toolchip"><b>ai_log</b><span>追加一条记录</span></div>
         <div class="toolchip"><b>ai_check</b><span>校验日志与状态</span></div>
@@ -1024,6 +1024,7 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
         <div class="toolchip"><b>ai_init</b><span>幂等接入工作区</span></div>
         <div class="toolchip"><b>ai_discipline</b><span>纪律清单与开关</span></div>
         <div class="toolchip"><b>ai_handoff</b><span>跨会话交接摘要</span></div>
+        <div class="toolchip"><b>ai_plan</b><span>执行计划 / 清单 / 风险</span></div>
       </div>
 
       <h3 class="subhead">常用命令</h3>

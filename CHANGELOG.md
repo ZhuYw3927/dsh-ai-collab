@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Fix: visualization files were never produced unless an `ai_log`/`ai_plan` call happened after
+  the upgrade.
+  - `session/created` autoInit now renders `TASKS.md` / `TASKS.html` / `.ai/PLAN.md` and
+    `..\.ai\dashboard.html` right after the workspace is synced.
+  - `ai_board` now refreshes `dashboard.html` on every call (it still never writes `board.md`).
+  - `ai_init` returns the dashboard path and renders the same artifacts.
+- Fix: `dashboard.html` per-project links were resolved against `.ai\` instead of the parent
+  directory (`../<project>/TASKS.html`) and were not URL-encoded (spaces broke the link).
+- Docs: intro page (`docs/index.html`) still claimed "5 native tools"; it now shows 8 tools and
+  the `ai_plan` chip.
+
 ## 0.6.0
 
 - Plan & task management: new `ai_plan` tool (show / set / done).
