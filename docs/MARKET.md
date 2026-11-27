@@ -1,6 +1,6 @@
 # Market release checklist
 
-Published as `dsh-ai-collab@0.7.0`. The remaining steps take it to the
+Published as `dsh-ai-collab@0.7.2`. The remaining steps take it to the
 community plugin market (`dshmarket` / awesome-dsh-plugin) and, optionally, a self-hosted
 format-1 index.
 
@@ -8,7 +8,9 @@ format-1 index.
 
 | Version | npm | Git tag | Market entry PR |
 |---|---|---|---|
-| `0.7.0` (2026-11-27) | published | `v0.7.0` | docs/desc-070 — description refresh for clean root layout / auto-rendered HTML views / resumed-session sync (pending) |
+| `0.7.2` (2026-11-27) | published | `v0.7.2` | #19371 — dark task list / cross-project dashboard + real-blocker filtering (open) |
+| `0.7.1` (2026-11-27) | local only | — | detail page switched to README fallback, hero screenshot, sans typography, desensitized public docs (never published) |
+| `0.7.0` (2026-11-27) | published | `v0.7.0` | #19293 — clean root layout / auto-rendered HTML views / resumed-session sync (open, superseded by #19371) |
 | `0.5.0` (2026-11-23) | published | `v0.5.0` | #18120 — description refresh for disciplines / handoff / safe writes (open) |
 | `0.4.4` (2026-11-20) | published | `v0.4.4` | #17234 — intro-page link in description (merged) |
 | `0.4.3` (2026-11-17) | published | `v0.4.3` | #16419 — first listing (merged) |
