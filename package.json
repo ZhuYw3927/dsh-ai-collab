@@ -1,10 +1,10 @@
 {
   "name": "dsh-ai-collab",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "os": [
     "win32"
   ],
-  "description": "DeepSeek Harness bundle: AI collaboration layer (status/log/check tools, disciplines, handoff, workspace scaffold) built around AGENTS.md and .ai/",
+  "description": "DeepSeek Harness bundle: AI collaboration layer (status/log/check/plan tools, disciplines, handoff, workspace scaffold) built around AGENTS.md and .ai/",
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -63,7 +63,7 @@
     "dsh": ">=0.2.1"
   },
   "scripts": {
-    "check": "node --check index.js && node --check lib/config.js && node --check lib/tasks.js && node --check lib/atomic.js && node --check lib/lock.js && node --check lib/disciplines.js && node --check lib/handoff.js",
-    "test": "node --test test/smoke.test.mjs test/lib.test.mjs test/preservation.test.mjs test/discipline.test.mjs"
+    "check": "node --check index.js && node --check lib/config.js && node --check lib/tasks.js && node --check lib/atomic.js && node --check lib/lock.js && node --check lib/disciplines.js && node --check lib/handoff.js && node --check lib/plan.js && node --check lib/dashboard.js",
+    "test": "node --test test/smoke.test.mjs test/lib.test.mjs test/preservation.test.mjs test/discipline.test.mjs test/plan.test.mjs"
   }
 }

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0
+
+- Plan & task management: new `ai_plan` tool (show / set / done).
+  - `.ai/plan.json` stores a structured plan: a goal block, a checklist block, and a risk block.
+    Each risk has a severity (red/yellow/green), a mitigation, and an active/resolved flag.
+  - `appendRecord` auto-merges active plan risks into `status.json` → `blockers`.
+  - `lib/plan.js` renders three files atomically: `PLAN.md` (the plan itself), `TASKS.md` (three
+    sections: current plan → checklist → risk log, followed by the reverse-chronological log),
+    and `TASKS.html` (self-contained dashboard-style HTML, same visual language as
+    `dashboard.html`).
+  - `refreshTasks` no longer requires a manual `.ai/tasks-enabled` marker — the file is created
+    automatically on first write.
+- Cross-project dashboard: `lib/dashboard.js` generates `F:\MyProject\.ai\dashboard.html` from
+  all sibling project statuses. Rows with active blockers are highlighted in red; each project
+  gets a sparkline bar of record counts from the last 7 log entries. Run automatically after
+  every `ai_log` and `ai_init`.
+- Workspace cleanup: root directory reduced to `AGENTS.md` + `TASKS.md` + `dsh-ai-collab.html`;
+  everything else moved into `.ai/docs/`, `.ai/scripts/`, `.ai/dist/`, `.ai/market/`.
+  Stray `dsh-ai-collab-0.4.3.zip` deleted.
+- Tests: 39 (14 new for plan I/O, checklist toggling, risk merging, Markdown/HTML rendering,
+  project scanning and dashboard generation; all old tests pass).
+- Documentation: `AGENTS.template.md` §6 table now lists `plan.json`/`PLAN.md`, the three
+  sub-directories, `dashboard.html` and `TASKS.html`.
+
 ## 0.5.0
 
 - Disciplines: global modules + project rules.

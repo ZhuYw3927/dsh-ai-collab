@@ -484,7 +484,7 @@
     <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0d6b5b"/><path d="M9 11h14M9 16h9M9 21h11" stroke="#8fe7d1" stroke-width="2.6" stroke-linecap="round"/></svg>
     <span>dsh-ai-collab</span>
   </a>
-  <span class="ver">v0.5.0</span>
+  <span class="ver">v0.6.0</span>
   <nav class="top-nav" aria-label="页面导航">
     <a href="#problem">问题</a>
     <a href="#model">机制</a>
@@ -568,7 +568,7 @@
       </ol>
     </nav>
     <div class="side-card">
-      <div class="sc-row"><span class="pulse" aria-hidden="true"></span>已发布 · 0.5.0</div>
+      <div class="sc-row"><span class="pulse" aria-hidden="true"></span>已发布 · 0.6.0</div>
       <p>npm 已上架，社区市场已收录；脚手架当前支持 Windows。</p>
       <button class="print-btn" type="button" id="printBtn" onclick="window.print()">打印 / 保存为 PDF</button>
     </div>
@@ -1060,13 +1060,13 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
     <section class="sec" id="status">
       <p class="kicker"><span class="bar" aria-hidden="true"></span>09 · 边界与状态</p>
       <h2>已发布，边界清晰</h2>
-      <p class="lead">0.5.0 已上 npm 并被社区插件市场收录；脚手架目前仅支持 Windows，只读工具与任务渲染本身与平台无关。</p>
+      <p class="lead">0.6.0 已上 npm 并被社区插件市场收录；新增执行计划、检查清单、风险应对与跨项目仪表盘；脚手架目前仅支持 Windows，只读工具与任务渲染本身与平台无关。</p>
 
       <div class="release">
         <div class="rel">
           <div class="rel-top"><span>npm</span><span class="badge-ok">已发布</span></div>
-          <b>dsh-ai-collab@0.5.0</b>
-          <span>2026-11-23 上架，可直接安装</span>
+          <b>dsh-ai-collab@0.6.0</b>
+          <span>2026-11-27 上架，可直接安装</span>
         </div>
         <div class="rel">
           <div class="rel-top"><span>GitHub</span><span class="badge-ok">已就绪</span></div>
@@ -1085,23 +1085,27 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
         </div>
       </div>
 
-      <h3 class="subhead">0.5.0 更新摘要</h3>
+      <h3 class="subhead">0.6.0 更新摘要</h3>
       <div class="rules">
         <div class="rule">
           <span class="rule-n">新</span>
-          <div><h3>纪律清单与开关</h3><p><code>AGENTS.md</code> 新增 generated 区 §8：全局 <code>G0…G7</code> 索引 + 项目 <code>P-*</code> 规则（启用内联）。新工具 <code>ai_discipline</code> 负责项目增删启停，以及全局模块的迁移与开关。</p></div>
+          <div><h3>执行计划与任务管理</h3><p>新工具 <code>ai_plan</code>（show / set / done）将目标、检查清单、风险写入 <code>.ai/plan.json</code>；活跃风险自动合并到 <code>status.json</code> → <code>blockers</code>，每次 <code>ai_status</code> 都能看到。</p></div>
         </div>
         <div class="rule">
           <span class="rule-n">新</span>
-          <div><h3>跨会话交接</h3><p><code>.ai/SESSION_BOOT.md</code> + <code>ai_handoff</code>：接棒提示词、必读顺序、继承摘要要求；<code>ai_log</code> / <code>ai_init</code> / 自动接入时自动重建。</p></div>
+          <div><h3>TASKS.md 三段式 + 可视化仪表盘</h3><p><code>TASKS.md</code> 现在分「当前计划 → 检查清单 → 风险日志 → 工作记录」四区，并同步生成 <code>TASKS.html</code>（与 <code>dashboard.html</code> 同 CSS 风格，自动色彩标记）。</p></div>
         </div>
         <div class="rule">
-          <span class="rule-n">固</span>
-          <div><h3>并发与文件保护</h3><p>跨进程锁 + 原子写覆盖日志、状态（<code>rev</code>）、<code>TASKS.md</code>、<code>SESSION_BOOT.md</code> 与 <code>AGENTS.md</code>；<code>llm.ps1</code> 同步实现；<code>ai_check</code> 增加 §8 漂移审计。</p></div>
+          <span class="rule-n">新</span>
+          <div><h3>跨项目仪表盘</h3><p><code>F:\MyProject\.ai\dashboard.html</code> 扫描所有兄弟项目状态，有活动阻塞器的项目高亮红色，并附最近记录数量趋势条；每次 <code>ai_log</code> 自动刷新。</p></div>
+        </div>
+        <div class="rule">
+          <span class="rule-n">改</span>
+          <div><h3>路径整理与归档子目录</h3><p>项目根精简为 <code>AGENTS.md</code> + <code>TASKS.md</code> + <code>dsh-ai-collab.html</code>；其余统一收进 <code>.ai/docs/</code> <code>.ai/scripts/</code> <code>.ai/dist/</code>；AGENTS.md §6 索引已同步。</p></div>
         </div>
         <div class="rule">
           <span class="rule-n">测</span>
-          <div><h3>验证</h3><p>25 个测试全通过；12 进程并发写 12 条无丢失、<code>rev=12</code>；6 个 PowerShell <code>add</code> 并发无丢失；纪律增删启停与全局模块停用/恢复均实测。</p></div>
+          <div><h3>验证</h3><p>39 个测试全通过；14 个新增覆盖规划 I/O、检查清单切换、风险合并、Markdown 与 HTML 渲染、项目扫描与仪表盘生成。</p></div>
         </div>
       </div>
 
@@ -1149,7 +1153,7 @@ dsh plugin --profile &lt;profile&gt; add "&lt;包绝对路径&gt;"</code></pre>
 
 <footer class="site-footer">
   <div class="foot-inner">
-    <div>本文基于项目 <code>AGENTS.md</code>、<code>dsh-ai-collab.md</code>、插件 README 与发布记录整理 · 2026-11-23 · 对应版本 0.5.0</div>
+    <div>本文基于项目 <code>AGENTS.md</code>、<code>dsh-ai-collab.md</code>、插件 README 与发布记录整理 · 2026-11-27 · 对应版本 0.6.0</div>
     <div class="foot-links">
       <a href="https://www.npmjs.com/package/dsh-ai-collab" target="_blank" rel="noopener">npm</a>
       <a href="https://github.com/ZhuYw3927/dsh-ai-collab" target="_blank" rel="noopener">GitHub</a>

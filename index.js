@@ -10,7 +10,7 @@
  * 插件异常会影响 Host 启动，所以首次安装请用 --patch 隔离验证，见 README。
  */
 import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, renameSync, statSync, rmSync, writeFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, basename } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { homedir } from 'node:os'
 import { spawn } from 'node:child_process'
@@ -24,6 +24,8 @@ import {
   renderGlobalFile, renderProjectSection, setGlobalEnabled, ID_RE,
 } from './lib/disciplines.js'
 import { buildHandoff, inheritPrompt, writeSessionBoot } from './lib/handoff.js'
+import { activeRiskTitles, doneChecklistItem, PLAN_STATUSES, CHECKLIST_STATUSES, readPlan, setBlock, writePlan } from './lib/plan.js'
+import { writeDashboard } from './lib/dashboard.js'
 
 export const name = 'ai-collab'
 // Only `tools` is required. `workingDirectory` is used when present
@@ -209,6 +211,16 @@ function appendRecord(root, input) {
         const list = Array.isArray(st.blockers) ? st.blockers : []
         st.blockers = [...new Set([rec.issue, ...list].filter(Boolean))]
       }
+      // 将 plan.json 的 active 风险标题合并进 blockers（轻联动，去重）
+      try {
+        const titles = activeRiskTitles(readPlan(root))
+        if (titles.length > 0) {
+          const current = new Set((Array.isArray(st.blockers) ? st.blockers : []).filter((b) => !titles.includes(b)))
+          for (const t of titles) current.add(t)
+          const merged = [...current]
+          if (JSON.stringify(merged) !== JSON.stringify(st.blockers)) st.blockers = merged
+        }
+      } catch { /* plan.json 不可读时不阻塞状态更新 */ }
       writeFileAtomic(statusPath(root), JSON.stringify(st, null, 2) + '\n')
     }
     return rec
@@ -266,25 +278,31 @@ function recentlyRefreshed(root, key, windowMs) {
   return false
 }
 
-// 写日志后顺带刷新看板（仅当上级目录已有 .ai\board.md；走包内 ai-ensure，不执行工作区脚本）
+// 写日志后顺带刷新看板 + 仪表盘（仅当上级目录已有 .ai\board.md；走包内 ai-ensure，不执行工作区脚本）
 function maybeRefreshBoard(root) {
   try {
     if (!existsSync(join(dirname(root), '.ai', 'board.md'))) return
     if (recentlyRefreshed(root, 'board', 3000)) return
     spawnEnsure(root, {}, ['-NoAgents'])
+    // 仪表盘与看板同频刷新（3s 节流，不阻塞记录写入）
+    try { writeDashboard(root) } catch (e) { appendLog('ai-collab-dashboard.log', `root=${root} throw ${e?.message || e}`) }
   } catch { /* 看板刷新失败不影响记录 */ }
 }
 
 /**
- * 写日志后刷新任务清单（仅当 .ai\tasks-enabled 存在）。
+ * 写日志后刷新任务清单（TASKS.md + TASKS.html + PLAN.md）。
+ * 首次触发时自动创建 .ai\tasks-enabled（不再需要手动开）。
  * 进程内渲染：不执行工作区自带的 .ai/llm.ps1，避免仓库脚本被插件执行。
  */
 function refreshTasks(root) {
   try {
-    if (!existsSync(join(root, '.ai', 'tasks-enabled'))) return
-    const { written, count } = withLock(join(root, '.ai', '.tasks.lock'), () => writeTasks(root, nowIso()))
-    if (!written) return
-    if (count === 0) appendLog('ai-collab-tasks.log', `root=${root} count=0`)
+    const marker = join(root, '.ai', 'tasks-enabled')
+    if (!existsSync(marker)) mkdirSync(marker, { recursive: true })
+    const st = readJson(statusPath(root))
+    const projectName = (st && st.project) || basename(root)
+    const result = withLock(join(root, '.ai', '.tasks.lock'), () => writeTasks(root, nowIso(), projectName))
+    if (!result.written) return
+    if (result.count === 0) appendLog('ai-collab-tasks.log', `root=${root} count=0`)
   } catch (error) {
     appendLog('ai-collab-tasks.log', `root=${root} throw ${error?.message || error}`)
   }
@@ -698,6 +716,55 @@ function registerTools(ctx, opts, defineTool, spec) {
       }
       if (action === 'inherit') payload.prompt = inheritPrompt(r)
       return payload
+    }
+  }))
+
+  registered.push('ai_plan')
+  ctx.tools.register(defineTool({
+    name: 'ai_plan',
+    description: '管理执行计划、检查清单与风险应对：数据存 .ai\\plan.json，渲染产物 .ai\\PLAN.md + TASKS.md + TASKS.html。show / set <plan|checklist|risks> / done <checklist-id>。',
+    parameters: {
+      action: { type: 'string', required: true, enum: ['show', 'set', 'done'], description: 'show 返回当前计划；set 覆盖 plan/checklist/risks 其中一块（传 key+items）；done 勾选一条清单项' },
+      key: { type: 'string', description: 'set 时必填：plan / checklist / risks' },
+      items: { type: 'array', items: { type: 'json' }, description: 'set 时的项数组（JSON 对象列表）' },
+      id: { type: 'string', description: 'done 时的清单项 id' },
+      root: { type: 'string', description: '目标工作区，缺省为会话 cwd' },
+    },
+    output,
+    async execute(args, exec) {
+      const r = args?.root ? String(args.root) : await rootOf(exec)
+      const action = String(args?.action || 'show')
+      const now = nowIso()
+
+      if (action === 'show') {
+        const plan = readPlan(r)
+        return { root: r, plan, hasPlan: plan.plan.length > 0 || plan.checklist.length > 0 || plan.risks.length > 0 }
+      }
+
+      if (action === 'set') {
+        const key = String(args?.key || '')
+        const items = Array.isArray(args?.items) ? args.items : []
+        const result = setBlock(r, key, items, now)
+        refreshTasks(r)
+        maybeRefreshBoard(r)
+        return { root: r, ok: true, key, count: (result[key] || []).length, updated_at: result.updated_at }
+      }
+
+      if (action === 'done') {
+        const id = String(args?.id || '')
+        const { plan, item } = doneChecklistItem(r, id, now)
+        const rec = appendRecord(r, {
+          tool: 'ai_plan', action: 'task_done', status: 'ok',
+          summary: `清单项完成: ${item.item}`,
+          tags: ['plan', 'checklist'],
+        })
+        refreshTasks(r)
+        refreshSessionBoot(r)
+        maybeRefreshBoard(r)
+        return { root: r, ok: true, id, item, record: rec.id, plan: { ...plan, plan: undefined, checklist: undefined, risks: undefined } }
+      }
+
+      throw new Error(`未知 action: ${action}`)
     }
   }))
 

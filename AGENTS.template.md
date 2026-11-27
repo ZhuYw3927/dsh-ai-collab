@@ -78,9 +78,13 @@
 | 历史补丁（可复现每一步改动） | `.ai\changelog\patches\` |
 | 日志 / 状态格式与校验 | `.ai\LOG_FORMAT.md`、`.ai\schema\log.schema.json` |
 | 敏感信息规则 | `.ai\SECURITY.md` |
-| 跨项目看板 | `..\.ai\board.md` |
+| 执行计划 / 检查清单 / 风险应对 | `.ai\plan.json`（数据）、`.ai\PLAN.md`（渲染） |
+| 项目文档（对外介绍 / 维护记录） | `.ai\docs\` |
+| 维护脚本 | `.ai\scripts\` |
+| 发布产物 | `.ai\dist\` |
+| 跨项目看板 / 仪表盘 | `..\.ai\board.md`、`..\.ai\dashboard.html` |
 | 工程内修改历史（对外） | 各工程 `readme.txt` |
-| 任务记录清单（默认工作区） | `TASKS.md`（根目录，自动生成） |
+| 任务记录清单（所有项目） | `TASKS.md`（自动生成）、`TASKS.html`（可视化） |
 
 ## 7. 多工具入口（严格单文件）
 
