@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.2 (2026-11-27)
+
+- Renderer: `TASKS.html` is rebuilt on the dark, single-page design used by the visual
+  introduction: hero (project · records · generated time), four counters (total / ok / partial /
+  todo), a proportion bar, the plan / checklist / risks panels, and the work-log table with
+  type and status tags, filter chips, `/` search, click-to-copy record ids and a scroll progress
+  bar. Below 1040 px the table degrades to cards (`data-label` keeps every column name), so the
+  same file is readable on a phone.
+- Renderer: `dashboard.html` (cross-project) now shares that visual system: hero with
+  projects / records / blocking counters, a current-blockers list, a per-project record trend and
+  an overview table (state, phase, focus, blockers, records, last update) whose project and record
+  cells link to that project's `TASKS.html`; also cards below 1040 px.
+- Fix: placeholder blockers (`无` / `—` / `none`) are no longer counted as blockers nor listed in
+  `Current blockers`.
+- Migration: every already-adopted workspace was re-rendered once (`TASKS.html` × 10) and
+  `dashboard.html` regenerated with the new templates.
+- Tests: **41** (14 renderer tests, unchanged count).
+
 ## 0.7.1 (2026-11-27)
 
 - Docs: the README now opens with a real screenshot of the visual introduction page. The plugin

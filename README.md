@@ -13,7 +13,20 @@ The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, C
 
 > **Visual introduction (中文):** <https://ZhuYw3927.github.io/dsh-ai-collab/>
 
-> Status: **0.7.1, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab) and listed in the community plugin market — see [Known limitations](#known-limitations).
+> Status: **0.7.2, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab) and listed in the community plugin market — see [Known limitations](#known-limitations).
+
+## What's new in 0.7.2
+
+- **The rendered pages now match the introduction page.** `TASKS.html` uses the dark single-page
+  design: hero, four counters, plan / checklist / risk panels and a work-log table with tags,
+  filter chips, `/` search and copy-on-click record ids.
+- **Responsive by construction.** Wide windows get the table; below 1040 px the same rows become
+  cards that keep every column label, so a task list is readable on a phone.
+- **`dashboard.html` follows the same system** — projects / records / blocking counters, a
+  current-blockers list, a per-project trend and an overview table linking to each project's
+  `TASKS.html`.
+- **No false blockers.** Placeholder values such as `无` / `—` are ignored instead of counted.
+- Tests: **41** (unchanged count; renderer and layout update).
 
 ## What's new in 0.7.1
 
@@ -46,8 +59,9 @@ The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, C
   severity badge, a mitigation, and an active/resolved flag). Active risks are auto-merged into
   `status.json` → `blockers` so they surface in every status readout.
 - **`TASKS.md` is now three-section** (plan → checklist → risks → log) and also rendered as
-  **`TASKS.html`**, a self-contained dashboard-style page with status badges and risk colour
-  coding. The `.ai/tasks-enabled` marker is no longer needed — `refreshTasks` creates it
+  **`TASKS.html`**, a self-contained page with status badges and risk colour coding (since 0.7.2
+  it shares the dark visual system of the introduction page and switches to cards on narrow
+  screens). The `.ai/tasks-enabled` marker is no longer needed — `refreshTasks` creates it
   automatically on first use.
 - **Cross-project dashboard**: `<workspace-parent>\.ai\dashboard.html` is generated after every
   `ai_log` and `ai_init`. It scans all sibling projects, highlights rows with active blockers in
