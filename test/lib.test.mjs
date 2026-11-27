@@ -60,7 +60,7 @@ test('parseRecords: skips blank and malformed lines', () => {
   assert.deepEqual(records.map((r) => r.id), ['a', 'b'])
 })
 
-test('writeTasks: writes TASKS.md from .ai/log.jsonl', () => {
+test('writeTasks: writes .ai/TASKS.md from .ai/log.jsonl', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-tasks-'))
   try {
     mkdirSync(join(dir, '.ai'))
@@ -68,7 +68,7 @@ test('writeTasks: writes TASKS.md from .ai/log.jsonl', () => {
     const result = writeTasks(dir, 'now')
     assert.equal(result.written, true)
     assert.equal(result.count, 1)
-    const text = readFileSync(join(dir, 'TASKS.md'), 'utf8')
+    const text = readFileSync(join(dir, '.ai', 'TASKS.md'), 'utf8')
     assert.ok(text.includes('| t1 | fix | ok | s | `i1` |'))
   }
   finally {
@@ -81,7 +81,7 @@ test('writeTasks: no log means no file', () => {
   try {
     const result = writeTasks(dir, 'now')
     assert.equal(result.written, false)
-    assert.equal(existsSync(join(dir, 'TASKS.md')), false)
+    assert.equal(existsSync(join(dir, '.ai', 'TASKS.md')), false)
   }
   finally {
     rmSync(dir, { recursive: true, force: true })

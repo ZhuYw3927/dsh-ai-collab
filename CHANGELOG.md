@@ -1,18 +1,26 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 (2026-11-27)
 
+- Feature: **clean project root**. `TASKS.md` moved to `.ai/TASKS.md`; the root keeps only
+  `AGENTS.md` and the rendered HTML pages. Workspace docs/scripts/artifacts are sorted into
+  `.ai/docs`, `.ai/scripts`, `.ai/dist` and `.ai/market`.
+- Feature: **automatic HTML regeneration**. New `syncArtifacts(root)` in `index.js` re-renders
+  `.ai/TASKS.md` + root `TASKS.html` + `.ai/PLAN.md` + `..\.ai\dashboard.html`; it is called from
+  `ai_status`, `ai_log`, `ai_board`, `ai_plan` (`set`/`done`), `ai_init` and `session/created`
+  autoInit, and from a global `session/event` hook (8 s throttle) that covers resumed sessions.
 - Fix: visualization files were never produced unless an `ai_log`/`ai_plan` call happened after
   the upgrade.
-  - `session/created` autoInit now renders `TASKS.md` / `TASKS.html` / `.ai/PLAN.md` and
-    `..\.ai\dashboard.html` right after the workspace is synced.
+  - `session/created` autoInit now renders the artifacts right after the workspace is synced.
   - `ai_board` now refreshes `dashboard.html` on every call (it still never writes `board.md`).
-  - `ai_init` returns the dashboard path and renders the same artifacts.
+  - `ai_init` returns the artifacts flag and renders the same files.
 - Fix: `dashboard.html` per-project links were resolved against `.ai\` instead of the parent
   directory (`../<project>/TASKS.html`) and were not URL-encoded (spaces broke the link).
-- Docs: intro page (`docs/index.html`) still claimed "5 native tools"; it now shows 8 tools and
-  the `ai_plan` chip.
-
+- Docs: intro page (`docs/index.html`) refreshed for 0.7.0 (root layout policy, auto-sync,
+  eight tools).
+- Migration: `ai-ensure` / `ai_init` moves an existing root `TASKS.md` into `.ai/TASKS.md` and
+  re-renders; verified on 10 workspaces (32/6/38/12/49/2/49/36/18/24 records).
+- Tests: **41** (2 new artifact-sync tests in `test/smoke.test.mjs`; `npm run check` clean).
 ## 0.6.0
 
 - Plan & task management: new `ai_plan` tool (show / set / done).

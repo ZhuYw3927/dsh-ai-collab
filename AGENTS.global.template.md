@@ -39,7 +39,7 @@
   **禁止修改项目内任何内容**。
 - 看板是生成物，禁止手改；需要更新就重跑生成命令。
 - **默认工作区**（`...\deepseek-harness\default-workspace`）不进入跨项目看板；
-  它的任务记录写在根目录 `TASKS.md`（`add` 后自动刷新）。
+  它的任务记录在根目录 `TASKS.html`（可视化，`add` 后自动刷新），markdown 清单在 `.ai\TASKS.md`。
 
 ## 3. 默认只读与权限确认
 

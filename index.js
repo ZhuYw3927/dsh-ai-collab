@@ -290,7 +290,7 @@ function maybeRefreshBoard(root) {
 }
 
 /**
- * 写日志后刷新任务清单（TASKS.md + TASKS.html + PLAN.md）。
+ * 写日志后刷新任务清单（.ai/TASKS.md + 根 TASKS.html + .ai/PLAN.md）。
  * 首次触发时自动创建 .ai\tasks-enabled（不再需要手动开）。
  * 进程内渲染：不执行工作区自带的 .ai/llm.ps1，避免仓库脚本被插件执行。
  */
@@ -305,6 +305,28 @@ function refreshTasks(root) {
     if (result.count === 0) appendLog('ai-collab-tasks.log', `root=${root} count=0`)
   } catch (error) {
     appendLog('ai-collab-tasks.log', `root=${root} throw ${error?.message || error}`)
+  }
+}
+
+/**
+ * 重新生成所有可视化产物（`.ai/TASKS.md` + 根 `TASKS.html` + `.ai/PLAN.md`
+ * + 父目录 `.ai/dashboard.html`）。工具调用与会话活动都会走这里，
+ * 保证「插件刚装好/刚重启」时文件也能自动出现，不需要用户手动 log 一次。
+ *
+ * 8s 内同一项目只渲染一次（会话事件很密，避免重复写盘）；`force` 跳过节流。
+ */
+function syncArtifacts(root, { force = false } = {}) {
+  try {
+    if (!root || !existsSync(join(root, '.ai'))) return false
+    if (!force && recentlyRefreshed(root, 'artifacts', 8000)) return false
+    refreshTasks(root)
+    try { writeDashboard(root) } catch (error) {
+      appendLog('ai-collab-dashboard.log', `sync root=${root} throw ${error?.message || error}`)
+    }
+    return true
+  } catch (error) {
+    appendLog('ai-collab-artifacts.log', `sync root=${root} throw ${error?.message || error}`)
+    return false
   }
 }
 
@@ -361,10 +383,7 @@ export function apply(ctx, config = {}) {
               appendLog('ai-collab-handoff.log', `autoInit root=${root} throw ${error?.message || error}`)
             }
             // 会话一建立就补齐可视化产物（TASKS.html / dashboard.html），避免重启后文件不存在
-            refreshTasks(root)
-            try { writeDashboard(root) } catch (error) {
-              appendLog('ai-collab-dashboard.log', `autoInit root=${root} throw ${error?.message || error}`)
-            }
+            syncArtifacts(root, { force: true })
           }
           ctx.logger?.info?.('ai-collab autoInit', { root, ok: finished.ok, parsed: parseEnsureOutput(finished.out) })
         }
@@ -381,6 +400,28 @@ export function apply(ctx, config = {}) {
       return typeof off === 'function' ? off : () => {}
     } catch (error) {
       ctx.logger?.warn?.('ai-collab: session/created hook unavailable', error)
+      return () => {}
+    }
+  })
+
+  // 1b) 会话活动兜底：`session/created` 只覆盖新建会话，重启后恢复的旧会话不会触发；
+  // 而 `session/event` 在每个 turn/step 都会发一次，用它把「恢复会话」也纳入自动渲染。
+  // 走 syncArtifacts 的 8s 节流，密集事件不会重复写盘。
+  ctx.effect(() => {
+    const handler = (session) => {
+      try {
+        const root = session?.cwd || session?.workspace
+        if (!root) return
+        syncArtifacts(root)
+      } catch (error) {
+        appendLog('ai-collab-artifacts.log', `session-event throw ${error?.message || error}`)
+      }
+    }
+    try {
+      const off = ctx.on('session/event', handler, { global: true })
+      return typeof off === 'function' ? off : () => {}
+    } catch (error) {
+      ctx.logger?.warn?.('ai-collab: session/event hook unavailable', error)
       return () => {}
     }
   })
@@ -463,6 +504,8 @@ function registerTools(ctx, opts, defineTool, spec) {
     output,
     async execute(args, exec) {
       const r = await rootOf(exec)
+      // 开工第一步就把可视化产物补齐（重启/新装/恢复会话后第一次 ai_status 即可见）
+      syncArtifacts(r)
       const st = readJson(statusPath(r))
       const lines = readLines(logPath(r))
       return {
@@ -493,7 +536,7 @@ function registerTools(ctx, opts, defineTool, spec) {
     async execute(args, exec) {
       const r = await rootOf(exec)
       const rec = appendRecord(r, args)
-      refreshTasks(r)
+      syncArtifacts(r)
       refreshSessionBoot(r)
       maybeRefreshBoard(r)
       return rec
@@ -558,10 +601,8 @@ function registerTools(ctx, opts, defineTool, spec) {
         })
       }
       const projects = rows.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
-      // 仪表盘与本工具同频刷新（board.md 由 ai-ensure 维护，这里只写 dashboard.html）
-      try { writeDashboard(root) } catch (e) {
-        appendLog('ai-collab-dashboard.log', `ai_board root=${root} throw ${e?.message || e}`)
-      }
+      // 仪表盘与本工具同频刷新（board.md 由 ai-ensure 维护，这里只写 dashboard.html + TASKS.html）
+      syncArtifacts(root, { force: true })
       return { scanned: parent, projects }
     }
   }))
@@ -597,10 +638,7 @@ function registerTools(ctx, opts, defineTool, spec) {
           payload.boot = { ok: false, error: String(error?.message || error) }
         }
         // 接入/同步完成后补齐可视化产物（TASKS.html / dashboard.html）
-        refreshTasks(target)
-        try { payload.dashboard = writeDashboard(target) } catch (error) {
-          appendLog('ai-collab-dashboard.log', `ai_init root=${target} throw ${error?.message || error}`)
-        }
+        payload.artifacts = syncArtifacts(target, { force: true })
       }
       return payload
     }
@@ -738,7 +776,7 @@ function registerTools(ctx, opts, defineTool, spec) {
   registered.push('ai_plan')
   ctx.tools.register(defineTool({
     name: 'ai_plan',
-    description: '管理执行计划、检查清单与风险应对：数据存 .ai\\plan.json，渲染产物 .ai\\PLAN.md + TASKS.md + TASKS.html。show / set <plan|checklist|risks> / done <checklist-id>。',
+    description: '管理执行计划、检查清单与风险应对：数据存 .ai\\plan.json，渲染产物 .ai\\PLAN.md + .ai\\TASKS.md + 根 TASKS.html。show / set <plan|checklist|risks> / done <checklist-id>。',
     parameters: {
       action: { type: 'string', required: true, enum: ['show', 'set', 'done'], description: 'show 返回当前计划；set 覆盖 plan/checklist/risks 其中一块（传 key+items）；done 勾选一条清单项' },
       key: { type: 'string', description: 'set 时必填：plan / checklist / risks' },
@@ -761,7 +799,7 @@ function registerTools(ctx, opts, defineTool, spec) {
         const key = String(args?.key || '')
         const items = Array.isArray(args?.items) ? args.items : []
         const result = setBlock(r, key, items, now)
-        refreshTasks(r)
+        syncArtifacts(r, { force: true })
         maybeRefreshBoard(r)
         return { root: r, ok: true, key, count: (result[key] || []).length, updated_at: result.updated_at }
       }
@@ -774,7 +812,7 @@ function registerTools(ctx, opts, defineTool, spec) {
           summary: `清单项完成: ${item.item}`,
           tags: ['plan', 'checklist'],
         })
-        refreshTasks(r)
+        syncArtifacts(r, { force: true })
         refreshSessionBoot(r)
         maybeRefreshBoard(r)
         return { root: r, ok: true, id, item, record: rec.id, plan: { ...plan, plan: undefined, checklist: undefined, risks: undefined } }
@@ -788,4 +826,4 @@ function registerTools(ctx, opts, defineTool, spec) {
 }
 
 // 仅供测试与调试：不要在插件内部依赖这些内部函数。
-export const __internals = { recordErrors, appendRecord, readLines, nowIso, newId, refreshTasks, SCAFFOLD_SUPPORTED }
+export const __internals = { recordErrors, appendRecord, readLines, nowIso, newId, refreshTasks, syncArtifacts, SCAFFOLD_SUPPORTED }

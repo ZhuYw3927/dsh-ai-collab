@@ -6,7 +6,7 @@ import { join } from 'node:path'
 
 import { __internals } from '../index.js'
 
-const { appendRecord, recordErrors, readLines, nowIso, newId } = __internals
+const { appendRecord, recordErrors, readLines, nowIso, newId, syncArtifacts } = __internals
 
 test('nowIso 带时区偏移', () => {
   assert.match(nowIso(), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/)
@@ -63,4 +63,28 @@ test('recordErrors 能识别非法枚举与时区缺失', () => {
   assert.ok(bad.some((e) => e.includes('status 非法')))
   assert.ok(bad.some((e) => e.includes('ts')))
   assert.ok(bad.every((e) => e.startsWith('第 3 行')))
+})
+test('syncArtifacts 自动生成根 TASKS.html 与 .ai/TASKS.md', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ai-collab-sync-'))
+  try {
+    mkdirSync(join(dir, '.ai'), { recursive: true })
+    writeFileSync(join(dir, '.ai', 'log.jsonl'), '{"id":"a","ts":"2026-11-27T10:00:00+08:00","tool":"t","actor":"ai","status":"ok","summary":"自动生成"}\n', 'utf8')
+    assert.equal(syncArtifacts(dir, { force: true }), true)
+    assert.equal(existsSync(join(dir, 'TASKS.html')), true)
+    assert.equal(existsSync(join(dir, '.ai', 'TASKS.md')), true)
+    assert.equal(existsSync(join(dir, 'TASKS.md')), false)
+    assert.ok(readFileSync(join(dir, 'TASKS.html'), 'utf8').includes('自动生成'))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('syncArtifacts 对未接入目录保持无操作', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ai-collab-sync-'))
+  try {
+    assert.equal(syncArtifacts(dir, { force: true }), false)
+    assert.equal(existsSync(join(dir, 'TASKS.html')), false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

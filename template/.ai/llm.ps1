@@ -734,7 +734,8 @@ Record work through `.ai\llm.cmd` (status / tail / add / check). Never rewrite t
 }
 
 function Invoke-Tasks([string]$ProjectRoot) {
-    # 生成人读的任务记录清单：<项目根>\TASKS.md（来源 log.jsonl，追加语义不变）
+    # 生成人读的任务记录清单：<项目根>\.ai\TASKS.md（来源 log.jsonl，追加语义不变）
+    # 根目录只留 AGENTS.md 与可视化 HTML（TASKS.html 由插件渲染），markdown 归 .ai\
     $rows = @()
     foreach ($line in (Get-LogLines $ProjectRoot)) {
         $rec = $null
@@ -763,7 +764,7 @@ function Invoke-Tasks([string]$ProjectRoot) {
     }
     if ($rows.Count -eq 0) { [void]$sb.AppendLine('| （暂无记录） | | | | |') }
 
-    $out = Join-Path $ProjectRoot 'TASKS.md'
+    $out = Join-Path $ProjectRoot '.ai\TASKS.md'
     $lock = Join-Path $ProjectRoot '.ai\.tasks.lock'
     [void](Enter-ProjectLock $lock)
     try { Write-TextAtomic $out ($sb.ToString().Replace("`r`n", "`n")) }
@@ -987,7 +988,7 @@ AI 协作层 v2 — .ai\llm.ps1
   .ai\llm.ps1 archive [-Before yyyy-MM-dd] [-MaxMB 2] [-Force]
   .ai\llm.ps1 board   [-Root <project-root>] [-Out <path>]
   .ai\llm.ps1 doctor
-  .ai\llm.ps1 tasks                      # 生成 <项目根>\TASKS.md（任务记录清单）
+  .ai\llm.ps1 tasks                      # 生成 .ai\TASKS.md（任务记录清单；根目录 TASKS.html 由插件渲染）
 
 示例:
   & .ai\llm.ps1 add -Tool deepseek-harness -Action fix -Status ok `

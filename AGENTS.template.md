@@ -84,7 +84,7 @@
 | 发布产物 | `.ai\dist\` |
 | 跨项目看板 / 仪表盘 | `..\.ai\board.md`、`..\.ai\dashboard.html` |
 | 工程内修改历史（对外） | 各工程 `readme.txt` |
-| 任务记录清单（所有项目） | `TASKS.md`（自动生成）、`TASKS.html`（可视化） |
+| 任务记录清单（所有项目） | 根 `TASKS.html`（可视化，自动生成）、`.ai\TASKS.md`（markdown 归档，自动生成） |
 
 ## 7. 多工具入口（严格单文件）
 

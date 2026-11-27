@@ -5,7 +5,7 @@ including but not limited to merchantability, fitness for a particular purpose,
 non-infringement, uninterrupted operation, freedom from errors, or accuracy of data.
 
 The bundle writes files inside your workspace (for example `AGENTS.md`, `.ai/` and
-`TASKS.md`) and may run local PowerShell scripts. Before using it on an important
+`TASKS.html`, `.ai/TASKS.md`) and may run local PowerShell scripts. Before using it on an important
 repository:
 
 - make a full backup, including the version-control state and uncommitted changes;
@@ -34,7 +34,7 @@ not exceed the amount you actually paid for this software (it is free, i.e. zero
 本软件按“现状（AS IS）”提供，不附带任何明示或默示的担保，包括但不限于：
 适销性、特定用途适用性、不侵权、无中断、无错误、数据准确性。
 
-本插件会在工作区内写入或修改文件（如 `AGENTS.md`、`.ai/`、`TASKS.md`），并可能调用
+本插件会在工作区内写入或修改文件（如 `AGENTS.md`、`.ai/`、`TASKS.html`），并可能调用
 本地 PowerShell 脚本。请在重要仓库中：
 
 - 使用前做好完整备份（含版本库与未提交改动）；

@@ -1,10 +1,10 @@
 {
   "name": "dsh-ai-collab",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "os": [
     "win32"
   ],
-  "description": "DeepSeek Harness bundle: AI collaboration layer (status/log/check/plan tools, disciplines, handoff, workspace scaffold) built around AGENTS.md and .ai/",
+  "description": "DeepSeek Harness bundle: AI collaboration layer (status/log/check/plan tools, disciplines, handoff, workspace scaffold, auto-rendered HTML views) built around AGENTS.md and .ai/",
   "type": "module",
   "main": "./index.js",
   "exports": {

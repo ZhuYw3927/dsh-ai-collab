@@ -137,7 +137,7 @@ test('renderTasksHtml generates self-contained HTML', () => {
   assert.ok(!html.includes('📋 执行计划'))
 })
 
-test('writeAllRenders creates TASKS.md + TASKS.html + PLAN.md', () => {
+test('writeAllRenders creates .ai/TASKS.md + TASKS.html + PLAN.md', () => {
   const dir = temp('allrender')
   mkdirSync(join(dir, '.ai'), { recursive: true })
   writeFileSync(join(dir, '.ai', 'log.jsonl'), '{"id":"a","ts":"2026-11-27T10:00:00+08:00","tool":"t","actor":"ai","status":"ok","summary":"test"}\n', 'utf8')
@@ -145,10 +145,10 @@ test('writeAllRenders creates TASKS.md + TASKS.html + PLAN.md', () => {
   p.plan.push({ id: 'p1', step: 's', acceptance: 'a', status: 'todo', owner: 'h', due: '' })
   writePlan(dir, p, 'now')
   const result = writeAllRenders(dir, [{ id: 'a', ts: '2026-11-27T10:00:00+08:00', tool: 't', actor: 'ai', status: 'ok', summary: 'test' }], 'now', 'Proj')
-  assert.ok(existsSync(join(dir, 'TASKS.md')))
+  assert.ok(existsSync(join(dir, '.ai', 'TASKS.md')))
   assert.ok(existsSync(join(dir, 'TASKS.html')))
   assert.ok(existsSync(join(dir, '.ai', 'PLAN.md')))
-  const md = readFileSync(join(dir, 'TASKS.md'), 'utf8')
+  const md = readFileSync(join(dir, '.ai', 'TASKS.md'), 'utf8')
   assert.ok(md.includes('## 执行计划'))
   assert.ok(md.includes('## 工作日志'))
   const html = readFileSync(join(dir, 'TASKS.html'), 'utf8')
