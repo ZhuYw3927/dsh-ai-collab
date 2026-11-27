@@ -4,6 +4,12 @@ A DeepSeek Harness bundle that gives every AI tool in a repository the same proj
 one `AGENTS.md` entry file and one hidden `.ai/` folder holding an append-only work log,
 a current-state snapshot, and version-level change notes.
 
+## Where this document is used
+
+This long-form manual ships inside the package. The DSH store detail page renders `README.md`
+instead — the `meta.detail` pointer was removed from both locales in 0.7.1 — so the store shows
+the screenshot, feature notes and limitations from one document.
+
 ## Why
 
 Every new session spends its first minutes rediscovering the build command, the read-only
@@ -25,6 +31,14 @@ files that any tool can read: `AGENTS.md` for facts, `.ai/log.jsonl` for history
 | Plan & risk tracking | `.ai/plan.json` stores goals, checklists and risks; active risks merge into `status.json` → `blockers` on every `ai_log`; managed via `ai_plan` (show / set / done) |
 | Concurrency | `lib/lock.js` cross-process lock + `lib/atomic.js` temp/fsync/rename; `status.json` has a `rev`; PowerShell `llm.ps1` mirrors both |
 
+## What's new in 0.7.1
+
+| Change | Effect |
+|---|---|
+| Store page | The detail page renders `README.md` (screenshot + notes); `meta.detail` removed from `locale/en.json` / `locale/zh.json` |
+| Screenshot assets | `docs/preview.png` (1600x1000) and `docs/preview.svg` (640x300, self-contained) ship with the package |
+| Typography | The visual introduction uses one sans-serif stack for copy and headings; code and counters stay monospace |
+| Public docs | No machine paths: examples use `<workspace-parent>` and `$env:DSH_HOME` |
 ## What's new in 0.7.0
 
 | Change | Effect |

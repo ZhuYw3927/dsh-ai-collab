@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.1 (2026-11-27)
+
+- Docs: the README now opens with a real screenshot of the visual introduction page. The plugin
+  detail page renders the README itself: `meta.detail` was removed from `locale/en.json` and
+  `locale/zh.json`, so the screenshot, feature notes and limitations stay in one document.
+- Theme: the visual introduction page uses a single sans-serif stack for copy and headings;
+  code blocks, counters and file names stay monospace.
+- Docs: public material no longer contains local machine paths. Examples use `<workspace-parent>`
+  and `$env:DSH_HOME` instead of a drive layout.
+- Packaging: ships `docs/preview.png` (1600x1000) and `docs/preview.svg` (640x300, self-contained)
+  for the store page and the visual introduction.
+- Tests: 41 unchanged (docs and packaging release).
+
 ## 0.7.0 (2026-11-27)
 
 - Feature: **clean project root**. `TASKS.md` moved to `.ai/TASKS.md`; the root keeps only
@@ -33,7 +46,7 @@
     `dashboard.html`).
   - `refreshTasks` no longer requires a manual `.ai/tasks-enabled` marker — the file is created
     automatically on first write.
-- Cross-project dashboard: `lib/dashboard.js` generates `F:\MyProject\.ai\dashboard.html` from
+- Cross-project dashboard: `lib/dashboard.js` generates `<workspace-parent>\.ai\dashboard.html` from
   all sibling project statuses. Rows with active blockers are highlighted in red; each project
   gets a sparkline bar of record counts from the last 7 log entries. Run automatically after
   every `ai_log` and `ai_init`.

@@ -1,7 +1,6 @@
 {
   "meta": {
     "title": "AI collaboration layer",
-    "description": "Project memory for every AI tool: an append-only .ai/ work log, a current-state snapshot, and a zoned AGENTS.md that automation never overwrites.",
-    "detail": "docs/DETAIL.md"
+    "description": "Project memory for every AI tool: an append-only .ai/ work log, a current-state snapshot, and a zoned AGENTS.md that automation never overwrites."
   }
 }

@@ -2,6 +2,8 @@
 
 [![ci](https://github.com/ZhuYw3927/dsh-ai-collab/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhuYw3927/dsh-ai-collab/actions/workflows/ci.yml)
 
+![dsh-ai-collab: one project memory shared by every AI tool](https://raw.githubusercontent.com/ZhuYw3927/dsh-ai-collab/main/docs/preview.png)
+
 A [DeepSeek Harness](https://github.com/deepseek-ai) bundle that adds a **project-agnostic AI collaboration layer** built around two ideas:
 
 - `AGENTS.md` — the single entry file at the project root (facts: build/flash commands, constraints, read-only dirs);
@@ -11,7 +13,18 @@ The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, C
 
 > **Visual introduction (中文):** <https://ZhuYw3927.github.io/dsh-ai-collab/>
 
-> Status: **0.7.0, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab) and listed in the community plugin market — see [Known limitations](#known-limitations).
+> Status: **0.7.1, experimental**. Published on npm as [`dsh-ai-collab`](https://www.npmjs.com/package/dsh-ai-collab) and listed in the community plugin market — see [Known limitations](#known-limitations).
+
+## What's new in 0.7.1
+
+- **The store page now opens with a real screenshot.** The README starts with a capture of the
+  visual introduction page, and the plugin detail page renders this README directly (meta.detail
+  removed from both locales), so the screenshot, feature notes and limitations live in one place.
+- **One typeface.** The visual introduction page now uses a single sans-serif stack for copy and
+  headings; only code and counters stay monospace.
+- **No machine paths in public docs.** Example commands and links refer to `<workspace-parent>` /
+  `$env:DSH_HOME` instead of a local drive layout.
+- Tests: **41** (unchanged; docs and packaging release).
 
 ## What's new in 0.7.0
 
@@ -36,7 +49,7 @@ The point: any AI tool working in the repo (DSH, Claude Code, Cursor, Copilot, C
   **`TASKS.html`**, a self-contained dashboard-style page with status badges and risk colour
   coding. The `.ai/tasks-enabled` marker is no longer needed — `refreshTasks` creates it
   automatically on first use.
-- **Cross-project dashboard**: `F:\MyProject\.ai\dashboard.html` is generated after every
+- **Cross-project dashboard**: `<workspace-parent>\.ai\dashboard.html` is generated after every
   `ai_log` and `ai_init`. It scans all sibling projects, highlights rows with active blockers in
   red, and renders a sparkline bar of recent record counts per project.
 - **Workspace layout cleaned**: root directory reduced to `AGENTS.md` + `TASKS.md` +
